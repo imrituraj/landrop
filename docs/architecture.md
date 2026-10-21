@@ -138,8 +138,10 @@ See [security.md](security.md) for the full threat model. In short: everything
 from the network is validated at the boundary (Zod schemas, size checks before
 parsing, frame header validation before exposing payload); the server derives
 sender identity from the authenticated socket; peers are untrusted even inside a
-room; the server itself is trusted for introductions because peer verification is
-not implemented.
+room; the server itself is trusted for introductions because it also serves the
+client code. Optional peer verification ([peer-verification.md](peer-verification.md))
+pins each device's persisted DTLS certificate, which defeats impersonation by room
+members and signaling-only tampering.
 
 ## Concurrency and bounded resources
 

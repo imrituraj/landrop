@@ -6,6 +6,7 @@ import { useApp, useAppState } from './context.tsx';
 import { DepartedTransfers, Files } from './Files.tsx';
 import { kindLabel, linkLabel } from './labels.ts';
 import { Badge, Button, Callout, Dialog, Icon } from './primitives.tsx';
+import { VerificationBadge, VerifySection, verificationText } from './Verify.tsx';
 
 function useNow(intervalMs: number): number {
   const [now, setNow] = useState(() => Date.now());
@@ -149,7 +150,7 @@ function DeviceList() {
               type="button"
               onClick={() => app.selectPeer(id)}
               aria-pressed={isSel}
-              aria-label={`${p.deviceName}, ${kindLabel[p.deviceKind]}, ${l.text}${u ? `, ${u} unread messages` : ''}`}
+              aria-label={`${p.deviceName}, ${kindLabel[p.deviceKind]}, ${l.text}, ${verificationText(p)}${u ? `, ${u} unread messages` : ''}`}
               className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ring-1 transition-colors ${
                 isSel
                   ? 'bg-accent-50 ring-accent-500 dark:bg-slate-800 dark:ring-accent-500'
@@ -161,8 +162,9 @@ function DeviceList() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{p.deviceName}</span>
-                <span className="mt-1 block">
+                <span className="mt-1 flex flex-wrap gap-1">
                   <Badge tone={l.tone}>{l.text}</Badge>
+                  <VerificationBadge peer={p} />
                 </span>
               </span>
               {u > 0 && (
@@ -195,6 +197,7 @@ function PeerPanel({ peerId }: { peerId: string }) {
             <Badge tone={l.tone}>{l.text}</Badge>
             <span>{l.detail}</span>
           </p>
+          <VerifySection peerId={peerId} />
           {caps && (
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {caps.streamingSink

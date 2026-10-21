@@ -18,7 +18,7 @@ default elsewhere and in CI). See browser-support.md for why.
 
 ## Coverage by layer
 
-**Unit (packages, web client)** — 134 tests at last run
+**Unit (packages, web client)** — 149 tests at last run
 - Protocol schemas: strict validation, oversize rejection before parse, unsafe
   integers, unknown fields, wrong versions.
 - Binary framing: round trips including offsets above 2^32, byte order, every
@@ -44,9 +44,14 @@ default elsewhere and in CI). See browser-support.md for why.
 - Client: chat delivery semantics (ack, unconfirmed → late ack, retry dedup,
   reopen resend, peer departure, length/rate limits, flood drop, bounded history),
   route classification from stats, ICE candidate buffer bounds, invite parsing.
+- Peer verification: DTLS certificates from stats (fail-closed on missing,
+  unconnected or multiple transports), SHA-256 test vector, symmetric safety
+  number, pin persistence/validation/bounds, status transitions (pending,
+  unavailable, unverified, verified across generations and sessions, changed),
+  refusal to pin a stale fingerprint.
 - Server config validation.
 
-**Integration (server over real WebSockets)** — included in the 134
+**Integration (server over real WebSockets)** — included in the 149
 - Origin: missing, foreign, allow-list, same-origin toggle; unknown paths;
   per-IP connection limit; init required and init timeout.
 - Rooms: create/join/leave, uniform errors for wrong secret vs missing room,
@@ -64,7 +69,7 @@ default elsewhere and in CI). See browser-support.md for why.
 - Logs: no secrets, room IDs, codes, tokens, or SDP in trace-level logs.
 - HTTP: health/readiness/config, CSP and security headers, no CORS.
 
-**Browser E2E (Chrome 155, two contexts)** — 16 tests
+**Browser E2E (Chrome 155, two contexts)** — 17 tests
 - Pair by link (secret removed from the URL), connect directly (route from
   `getStats`), chat with delivery receipts, multiline, links, HTML rendered as text.
 - Code join with approval; invalid code; denial; invalid invitation.
@@ -81,6 +86,10 @@ default elsewhere and in CI). See browser-support.md for why.
   new connection generation, transfer resumes on attempt 2, bytes verified.
 - Signaling server restart; signaling outage with a forced socket drop (chat keeps
   flowing over WebRTC; session resumes with the same peer identity).
+- Peer verification: both screens show the same safety number, equal to the
+  browser's own `getStats()` certificate fingerprints; mark verified; still verified
+  after "Reconnect" (new generation) and after the peer reloads (certificate from
+  IndexedDB); "Security code changed" after the peer's stored certificate is deleted.
 
 **Not covered by automated tests (be aware)**
 - Real cross-device LAN behavior (phone ↔ laptop, laptop ↔ laptop).

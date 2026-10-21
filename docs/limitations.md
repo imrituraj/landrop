@@ -20,8 +20,15 @@ deliberate limits or not-yet-implemented features.
 
 ## Security
 
-- **No peer verification** (no short authentication string). The LanDrop server
-  is trusted not to man-in-the-middle connections. See security.md §5.
+- **Peer verification does not remove trust in the server.** Users can compare
+  a 128-bit-per-device safety number and mark devices verified (see
+  peer-verification.md), but the LanDrop server also serves the app, so it is
+  still trusted not to man-in-the-middle connections. See security.md §5.
+- The safety number is 32 hex digits long (two lines of 8 groups), with no QR
+  scan yet. A device's code changes when its site data is cleared, when its
+  certificate expires (after 1 year), or on every reload where storage is unavailable.
+- The persistent certificate is a stable identifier of the browser profile, visible
+  to room peers and to the server (inside SDP).
 - Display names and device types are self-asserted.
 - Invitation links grant access until the room expires (24 h by default).
 - Plain-HTTP LAN deployments are vulnerable to on-path attackers on the LAN.
@@ -72,11 +79,12 @@ deliberate limits or not-yet-implemented features.
 - [ ] E2E for network-caused WebRTC drops and ICE restart (e.g. interface toggling in a VM or network namespace).
 - [ ] Playwright Firefox exits with "Could not find profile folder" on the dev Mac (macOS 27); run the cross-browser project on Linux or another Mac.
 - [ ] Run the Compose + Caddy stack on a LAN host, including certificate trust on a phone.
-- [ ] Peer verification: short authentication string derived from both DTLS fingerprints, with a reviewed design.
+- [x] Peer verification: per-device codes from the DTLS certificate fingerprints, with a persisted certificate (docs/peer-verification.md). Still needs an external review.
+- [ ] QR-code scan for comparing safety numbers; optionally a reviewed commitment-based short SAS in addition to pins.
 - [ ] Optional relay mode (TURN), disabled by default, with explicit admin configuration and a visible "Relayed" state (the UI and stats classification already distinguish relay).
 - [ ] Evaluate an OPFS-backed receive path with export for browsers without `showSaveFilePicker`, only after verifying export behavior for large files.
 - [ ] Restart-resume (persisted handles, permission re-grant, source re-selection, hash state) — design first.
 - [ ] Folder transfer with path-traversal defenses, duplicate handling, and empty directories.
 - [ ] Test permission revocation during a streaming write.
 - [ ] Service worker for the app shell with an update strategy that never interrupts active transfers.
-- [ ] Reduce client bundle size (≈ 457 KB minified, mostly schema validation); consider `zod/mini`.
+- [ ] Reduce client bundle size (≈ 469 KB minified, mostly schema validation); consider `zod/mini`.

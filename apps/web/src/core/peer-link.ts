@@ -1,6 +1,7 @@
 import type { ClientMessageBody, ServerMessage } from '@landrop/protocol';
 import { log, tag } from './log.ts';
 import { CandidateBuffer, classifyRoute, type RouteInfo } from './stats.ts';
+import { readDtlsCertificates, type DtlsCertificates } from './verification.ts';
 
 /**
  * One WebRTC connection to one remote peer, independent of React.
@@ -53,6 +54,8 @@ export interface LinkDiagnostics {
   rebuilds: number;
   bufferedCandidatesDropped: number;
   routeInfo: RouteInfo | null;
+  /** DTLS certificates of the current generation (reset on rebuild); see verification.ts. */
+  certificates: DtlsCertificates | null;
 }
 
 export interface LinkTimings {
@@ -91,20 +94,20 @@ export class PeerLink {
   private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   private signalQueue: Promise<void> = Promise.resolve();
-  private readonly iceServers: RTCIceServer[];
+  private readonly rtcConfig: RTCConfiguration;
   private readonly cb: LinkCallbacks;
   private readonly timings: LinkTimings;
 
   constructor(
     localId: string,
     remoteId: string,
-    iceServers: RTCIceServer[],
+    rtcConfig: RTCConfiguration,
     cb: LinkCallbacks,
     timings: LinkTimings = DEFAULT_LINK_TIMINGS,
   ) {
     this.remoteId = remoteId;
     this.controller = localId < remoteId;
-    this.iceServers = iceServers;
+    this.rtcConfig = rtcConfig;
     this.cb = cb;
     this.timings = timings;
     this.diag = {
@@ -116,6 +119,7 @@ export class PeerLink {
       rebuilds: 0,
       bufferedCandidatesDropped: 0,
       routeInfo: null,
+      certificates: null,
     };
     this.build(1);
   }
@@ -162,6 +166,7 @@ export class PeerLink {
     this.clearTimers();
     const wasOpen = this.channelsOpen;
     this.channelsOpen = false;
+    this.diag.certificates = null;
     const pc = this.pc;
     this.pc = null;
     for (const ch of [this.control, this.chat, this.file]) {
@@ -194,8 +199,9 @@ export class PeerLink {
     this.candidates = new CandidateBuffer<RTCIceCandidateInit>(100);
     this.maxMessageSize = 0;
     this.diag.routeInfo = null;
+    this.diag.certificates = null;
 
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const pc = new RTCPeerConnection(this.rtcConfig);
     this.pc = pc;
     const current = () => this.pc === pc;
 
@@ -389,6 +395,7 @@ export class PeerLink {
         const report = await pc.getStats();
         if (this.pc !== pc) return;
         this.diag.routeInfo = classifyRoute(report);
+        this.diag.certificates = readDtlsCertificates(report);
         this.diag.bufferedCandidatesDropped = this.candidates.dropped;
         this.cb.onChange(this);
       } catch {

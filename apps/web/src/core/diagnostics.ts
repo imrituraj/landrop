@@ -38,6 +38,7 @@ export function buildDiagnostics(s: AppState, reconnects: number, logs: readonly
         iceRestarts: p.iceRestarts,
         rebuilds: p.rebuilds,
         route: p.route?.route ?? 'unknown',
+        verification: p.verification.status,
         localCandidateType: p.route?.localType ?? null,
         remoteCandidateType: p.route?.remoteType ?? null,
         protocol: p.route?.protocol ?? null,

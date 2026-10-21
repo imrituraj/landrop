@@ -20,12 +20,14 @@ import {
 } from './capabilities.ts';
 import { ChatService } from './chat.ts';
 import { buildDiagnostics } from './diagnostics.ts';
+import { loadLocalIdentity, type LocalIdentity } from './identity.ts';
 import { log, tag } from './log.ts';
 import { PeerLink, type LinkCallbacks } from './peer-link.ts';
 import { SignalingClient } from './signaling.ts';
 import type { AppState, PeerView, TransferView } from './state.ts';
 import { Store } from './store.ts';
 import { TransferService } from './transfers.ts';
+import { PENDING_VERIFICATION, PinStore, VerificationTracker } from './verification.ts';
 
 const NAME_KEY = 'landrop.deviceName';
 
@@ -53,6 +55,18 @@ export function isLoopbackOrigin(): boolean {
   return h === 'localhost' || h.endsWith('.localhost') || h === '[::1]' || h === '::1' || /^127\./.test(h);
 }
 
+function safeLocalStorage(): Storage | null {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function sameVerification(a: PeerView['verification'], b: PeerView['verification']): boolean {
+  return a.status === b.status && a.remoteFingerprint === b.remoteFingerprint && a.verifiedLabel === b.verifiedLabel && (a.number === null) === (b.number === null);
+}
+
 function loadName(fallback: string): string {
   try {
     return localStorage.getItem(NAME_KEY) || fallback;
@@ -77,6 +91,8 @@ export class AppController {
   private wakeLock: WakeLockSentinel | null = null;
   private lastRoom: Invite | null = null;
   private noticeSeq = 0;
+  private identity: LocalIdentity = { certificate: null, fingerprint: null, persistence: 'browser' };
+  private verification = new VerificationTracker(new PinStore(null), null);
 
   constructor() {
     const settings = loadSettings();
@@ -104,6 +120,7 @@ export class AppController {
       settings,
       notices: [],
       memoryReservedBytes: 0,
+      identityPersistence: null,
     });
 
     this.signaling = new SignalingClient(SignalingClient.defaultUrl(), () => this.store.get().identity, {
@@ -168,6 +185,10 @@ export class AppController {
     } catch (err) {
       this.store.update((s) => ({ ...s, configError: `Cannot reach the LanDrop server (${(err as Error).message}).` }));
     }
+    // The certificate must be ready before the first RTCPeerConnection, i.e. before joining a room.
+    this.identity = await loadLocalIdentity();
+    this.verification = new VerificationTracker(new PinStore(safeLocalStorage()), this.identity.fingerprint);
+    this.store.update((s) => ({ ...s, identityPersistence: this.identity.persistence }));
     this.signaling.connect();
     window.addEventListener('online', () => this.signaling.reconnectNow());
     document.addEventListener('visibilitychange', () => void this.syncWakeLock());
@@ -312,7 +333,7 @@ export class AppController {
       const prev = s.peers[p.peerId];
       const view: PeerView = prev
         ? { ...prev, ...p }
-        : { ...p, link: 'none', route: null, remoteCaps: null, gen: 0, iceRestarts: 0, rebuilds: 0, iceState: 'new' };
+        : { ...p, link: 'none', route: null, remoteCaps: null, gen: 0, iceRestarts: 0, rebuilds: 0, iceState: 'new', verification: PENDING_VERIFICATION };
       const peerOrder = s.peerOrder.includes(p.peerId) ? s.peerOrder : [...s.peerOrder, p.peerId];
       const selectedPeerId = s.selectedPeerId ?? (peerOrder.length === 1 ? p.peerId : null);
       return { ...s, peers: { ...s.peers, [p.peerId]: view }, peerOrder, selectedPeerId };
@@ -328,6 +349,7 @@ export class AppController {
     this.links.delete(peerId);
     this.transfers.peerGone(peerId);
     this.chat.peerGone(peerId);
+    this.verification.forget(peerId);
     this.store.update((s) => {
       const peers = Object.fromEntries(Object.entries(s.peers).filter(([id]) => id !== peerId));
       const peerOrder = s.peerOrder.filter((id) => id !== peerId);
@@ -357,8 +379,9 @@ export class AppController {
         this.transfers.linkOpened(peerId, link);
         this.chat.channelOpened(peerId);
       },
-      onClose: () => {
+      onClose: (link) => {
         this.transfers.linkClosed(peerId);
+        this.publishLink(peerId, link);
         this.store.update((s) => (s.peers[peerId] ? { ...s, peers: { ...s.peers, [peerId]: { ...s.peers[peerId], remoteCaps: null } } } : s));
       },
       onControl: (_link, raw) => {
@@ -385,10 +408,19 @@ export class AppController {
       },
       onBinary: (_link, data) => this.transfers.handleBinary(peerId, data),
     };
-    this.links.set(peerId, new PeerLink(selfId, peerId, iceServers, cb));
+    const certificates = this.identity.certificate ? [this.identity.certificate] : undefined;
+    this.links.set(peerId, new PeerLink(selfId, peerId, { iceServers, ...(certificates ? { certificates } : {}) }, cb));
   }
 
   private publishLink(peerId: string, link: PeerLink): void {
+    // Re-checked on every stats poll of every generation (certificates reset on rebuild).
+    const verification = this.verification.observe(peerId, link.diag.certificates);
+    const before = this.store.get().peers[peerId]?.verification.status;
+    if (verification.status === 'changed' && before !== 'changed') {
+      const name = this.store.get().peers[peerId]?.deviceName ?? 'A device';
+      log.warn(`link ${tag(peerId)}: verified certificate changed`);
+      this.notify('error', `${name}: the security code changed since you verified this device. Compare codes again before sending anything sensitive.`);
+    }
     this.store.update((s) => {
       const prev = s.peers[peerId];
       if (!prev) return s;
@@ -404,6 +436,7 @@ export class AppController {
             iceRestarts: link.diag.iceRestarts,
             rebuilds: link.diag.rebuilds,
             iceState: link.diag.iceConnectionState,
+            verification: sameVerification(prev.verification, verification) ? prev.verification : verification,
           },
         },
       };
@@ -531,6 +564,25 @@ export class AppController {
 
   retryLink(peerId: string): void {
     this.links.get(peerId)?.retry();
+  }
+
+  /** Pins the remote certificate whose code the user compared. False if the connection changed meanwhile. */
+  markVerified(peerId: string, displayedFingerprint: string): boolean {
+    const name = this.store.get().peers[peerId]?.deviceName ?? '';
+    const ok = this.verification.markVerified(peerId, displayedFingerprint, name);
+    if (!ok) this.notify('error', 'The connection changed while you were comparing. Compare the new code.');
+    this.refreshVerification(peerId);
+    return ok;
+  }
+
+  removeVerification(peerId: string): void {
+    this.verification.unverify(peerId);
+    this.refreshVerification(peerId);
+  }
+
+  private refreshVerification(peerId: string): void {
+    const link = this.links.get(peerId);
+    if (link) this.publishLink(peerId, link);
   }
 
   // ---------------------------------------------------------------------------

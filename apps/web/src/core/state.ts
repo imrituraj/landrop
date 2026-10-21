@@ -5,6 +5,8 @@ import type { ChatMessageView } from './chat.ts';
 import type { LinkState } from './peer-link.ts';
 import type { SignalingStatus } from './signaling.ts';
 import type { RouteInfo } from './stats.ts';
+import type { VerificationView } from './verification.ts';
+import type { LocalIdentity } from './identity.ts';
 
 export interface PeerView extends PeerInfo {
   link: LinkState | 'none';
@@ -14,6 +16,7 @@ export interface PeerView extends PeerInfo {
   iceRestarts: number;
   rebuilds: number;
   iceState: string;
+  verification: VerificationView;
 }
 
 export interface TransferView extends TransferSnapshot {
@@ -58,4 +61,6 @@ export interface AppState {
   settings: UserSettings;
   notices: Notice[];
   memoryReservedBytes: number;
+  /** How this device's verification code is kept (docs/peer-verification.md §4). */
+  identityPersistence: LocalIdentity['persistence'] | null;
 }
