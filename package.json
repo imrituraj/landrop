@@ -1,0 +1,38 @@
+{
+  "name": "landrop",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @landrop/server --filter @landrop/web run dev",
+    "build": "pnpm --filter @landrop/web run build",
+    "start": "node --env-file-if-exists=.env apps/server/src/main.ts",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --project chromium",
+    "test:e2e:cross": "playwright test --project cross-browser",
+    "test:large": "playwright test --config tests/network/playwright.network.config.ts large-file",
+    "test:perf": "playwright test --config tests/network/playwright.network.config.ts throughput raw-datachannel",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@landrop/protocol": "workspace:*",
+    "@landrop/shared": "workspace:*",
+    "@landrop/transfer-core": "workspace:*",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/ws": "8.18.2",
+    "eslint": "10.13.0",
+    "pino": "10.4.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5",
+    "ws": "8.22.0"
+  }
+}

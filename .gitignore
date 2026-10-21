@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.env
+*.log
+.DS_Store
+tests/.artifacts/
+infra/certs/
+.claude/

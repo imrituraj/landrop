@@ -1,0 +1,20 @@
+# HTTPS reverse proxy for LanDrop on a LAN.
+#
+# `tls internal` makes Caddy issue the certificate from its own local CA
+# (stored in the caddy-data volume). Every device must trust that CA's root
+# certificate once; see docs/deployment.md. WebSocket upgrades (/ws) are proxied
+# automatically by reverse_proxy.
+{
+	admin off
+	local_certs
+	skip_install_trust
+	# Do not log request URIs or headers beyond Caddy's defaults; invite secrets
+	# live in URL fragments, which browsers never send to servers.
+}
+
+https://{$LANDROP_HOSTNAME}:8443 {
+	tls internal
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy landrop:8787
+}

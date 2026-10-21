@@ -1,0 +1,58 @@
+# LanDrop on a LAN host: Caddy terminates HTTPS (local CA) and proxies to LanDrop.
+#   cp .env.example .env   # set LANDROP_HOSTNAME and ALLOWED_ORIGINS
+#   docker compose up -d --build
+# See docs/deployment.md for certificate trust on each device.
+services:
+  landrop:
+    build: .
+    image: landrop:local
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      STATIC_DIR: /app/web
+      # Only Caddy talks to LanDrop, so the X-Forwarded-For it sets is trusted.
+      TRUST_PROXY: "true"
+    expose:
+      - "8787"
+    # Uncomment to also offer plain HTTP directly on the LAN (no HTTPS; see docs/security.md §6).
+    # ports:
+    #   - "8787:8787"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    mem_limit: 256m
+    pids_limit: 128
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    depends_on:
+      landrop:
+        condition: service_healthy
+    ports:
+      - "8443:8443"
+    environment:
+      LANDROP_HOSTNAME: ${LANDROP_HOSTNAME:?set LANDROP_HOSTNAME in .env (LAN IP or hostname)}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy-data:
+  caddy-config:
