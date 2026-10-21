@@ -89,8 +89,7 @@ default elsewhere and in CI). See browser-support.md for why.
 - WebRTC drops caused by the network (Wi-Fi loss, ICE failure) on real devices;
   user-initiated rebuilds are browser-tested, ICE restart is not.
 - The real save/folder picker dialogs (they need a human).
-- Docker image build and Compose stack (Docker unavailable in the dev environment;
-  CI job provided but not yet run).
+- The Compose + Caddy stack (the image itself is built and smoke-tested in CI).
 - Permission revocation of a granted file handle mid-write (maps to
   `SINK_PERMISSION_DENIED` in code; untested).
 

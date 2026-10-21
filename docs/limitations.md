@@ -61,8 +61,8 @@ deliberate limits or not-yet-implemented features.
 ## Operations
 
 - No metrics endpoint (diagnostics are client-side, user-initiated exports).
-- Docker/Compose files are provided but were not built in the development
-  environment; the CI job that builds and smoke-tests the image has not run yet.
+- The Docker image is built and smoke-tested in CI; the Compose + Caddy HTTPS
+  stack has not been run end to end.
 
 ## Remaining work (checklist)
 
@@ -71,7 +71,7 @@ deliberate limits or not-yet-implemented features.
 - [ ] Get the Firefox (and WebKit) Playwright projects running and passing; then update browser-support.md.
 - [ ] E2E for network-caused WebRTC drops and ICE restart (e.g. interface toggling in a VM or network namespace).
 - [ ] Playwright Firefox exits with "Could not find profile folder" on the dev Mac (macOS 27); run the cross-browser project on Linux or another Mac.
-- [ ] Build and run the Docker image and Compose stack; run the CI workflow.
+- [ ] Run the Compose + Caddy stack on a LAN host, including certificate trust on a phone.
 - [ ] Peer verification: short authentication string derived from both DTLS fingerprints, with a reviewed design.
 - [ ] Optional relay mode (TURN), disabled by default, with explicit admin configuration and a visible "Relayed" state (the UI and stats classification already distinguish relay).
 - [ ] Evaluate an OPFS-backed receive path with export for browsers without `showSaveFilePicker`, only after verifying export behavior for large files.

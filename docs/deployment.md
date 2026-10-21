@@ -62,10 +62,9 @@ docker compose up -d --build
   shutdown).
 - Open `https://<LANDROP_HOSTNAME>:8443` on each device after trusting the CA (next section).
 
-> Docker files are provided and the image's runtime layout was exercised by
-> running its install and start steps outside Docker, but `docker build` /
-> `docker compose up` were **not run** in the development environment (Docker was
-> not installed). CI includes a Docker build-and-smoke-test job.
+> The image is built and smoke-tested in CI (GitHub Actions, ubuntu-24.04: starts,
+> reports ready, serves the app, shuts down gracefully on SIGTERM). The Compose
+> stack with Caddy and the certificate-trust steps have **not** been run yet.
 
 ### Trusting the certificate on each device
 

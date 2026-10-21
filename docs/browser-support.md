@@ -13,6 +13,7 @@ browser processes on one machine, real WebRTC over the host's LAN interface.
 | --- | --- | --- |
 | Chrome 155 → Chrome 155 | Streaming (File System Access API) | Pairing (link, code + approval), direct connection reported from stats, chat with delivery acks, files 0 B – 4 GiB with SHA-256, reject, cancel, pause/resume, batch to folder with de-duplicated names, peer disappearance, signaling outage, server restart |
 | Chrome 155 → Chrome 155 | Memory (streaming disabled) | Accept, download, byte-for-byte match; refusal above the advertised limit before any payload |
+| Playwright Chromium (headless shell) on Linux (GitHub Actions ubuntu-24.04) | Both | The full 16-test E2E suite passes in CI |
 
 Two contexts on one machine do **not** prove phone↔laptop or
 laptop↔laptop compatibility across a real network. See
@@ -58,7 +59,7 @@ The settings dialog shows the detected capabilities for the current browser.
 - **Playwright's bundled Chromium builds** (headless shell and Chrome for Testing)
   connected their ICE checks but never completed them on the test Mac, whose
   application firewall was enabled; the signed Google Chrome worked with identical
-  code. On such hosts run E2E tests with `E2E_CHANNEL=chrome` (the default on
+  code, and the same Playwright build passes the full suite on Linux CI. On such hosts run E2E tests with `E2E_CHANNEL=chrome` (the default on
   macOS when Chrome is installed).
 - **Off-the-record profiles** (incognito, Playwright's default contexts) keep the
   Origin Private File System in memory with a small quota; the streaming sink

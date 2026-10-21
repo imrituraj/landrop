@@ -65,7 +65,7 @@ matched the sender's SHA-256, finalized the file, and acknowledged it.
 | Resume after page reload | **Not supported** |
 | TURN relay mode | **Not implemented** |
 | Cross-device / non-Chrome browsers | **Unverified** — manual checklist in docs/testing.md |
-| Docker/Compose/CI | Provided; not executed in the dev environment |
+| Docker/Compose/CI | CI green on GitHub Actions (checks, 16 E2E on Linux Chromium, Docker build + smoke test); Compose + Caddy stack not run yet |
 
 Production-oriented does not mean audited. No security audit, universal browser
 support, or particular transfer speed is claimed.
